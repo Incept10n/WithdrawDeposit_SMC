@@ -1,0 +1,82 @@
+#include "imports/stdlib.fc";
+
+const min_amount_coins_contract = 10000000; ;; 0.01 TON
+
+slice loadData() inline {
+    var ds = get_data().begin_parse();
+    slice ownerAddress = ds~load_msg_addr();
+
+    return ownerAddress;
+}
+
+() storeData(slice newOwnerAddress) impure {
+    set_data(
+        begin_cell()
+            .store_slice(newOwnerAddress)
+        .end_cell()
+    );
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    slice ds = in_msg_body;
+ 
+    slice senderAddress = cs~load_msg_addr();
+    int opcode = ds~load_uint(32);
+    
+    
+    ;; deposit
+    if (opcode == 1) {
+        return();
+    }
+
+    ;; withdraw
+    
+    if (opcode == 2) {
+
+        int amountToWithdraw = ds~load_coins();
+        slice OwnerAddress = loadData();
+
+        throw_unless(999, equal_slice_bits(OwnerAddress, senderAddress));
+
+        var [currentNumberCoins, _] = get_balance();
+
+        int trueAmountToWithdraw = min(amountToWithdraw, currentNumberCoins - min_amount_coins_contract);
+
+        var msg = begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(OwnerAddress)
+        .store_coins(trueAmountToWithdraw)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+        
+        send_raw_message(msg.end_cell(), 1);
+
+        return ();
+    }
+
+    ;; change owner
+    if (opcode == 3) {
+        slice OwnerAddress = loadData();
+        throw_unless(999, equal_slice_bits(OwnerAddress, senderAddress));
+
+        slice newAddress = ds~load_msg_addr();
+
+        storeData(newAddress);
+        return ();
+    }
+
+    throw(777);
+}
+
+slice getOwner () method_id {
+    var OwnerAddress = loadData();
+    return OwnerAddress;
+}
+
+int getAmountOfFunds () method_id {
+
+    var [amountOfFunds, _] = get_balance();
+    return amountOfFunds;
+}
