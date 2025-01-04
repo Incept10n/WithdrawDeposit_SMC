@@ -1,4 +1,4 @@
-## A bit info
+## A little bit of info
 
 This is the first written smart contract by me. Simple Deposit/Withdraw. It exists (existed) on testnet on the address above.
 
